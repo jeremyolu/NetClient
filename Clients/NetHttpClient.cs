@@ -4,11 +4,11 @@ using System.Text.Json;
 
 namespace NetClient.Clients
 {
-    public class NetApiClient : INetApiClient
+    public class NetHttpClient : INetHttpClient
     {
         private readonly HttpClient _httpClient;
 
-        public NetApiClient(HttpClient? httpClient = null)
+        public NetHttpClient(HttpClient? httpClient = null)
         {
             _httpClient = httpClient ?? new HttpClient();
         }
