@@ -1,6 +1,10 @@
 ﻿using NetClient.Interfaces;
 using NetClient.Models;
+using System.Reflection.PortableExecutable;
+using System;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace NetClient.Clients
 {
@@ -23,6 +27,67 @@ namespace NetClient.Clients
              JsonSerializerOptions? jsonOptions = null,
             CancellationToken cancellationToken = default)
         {
+            jsonOptions = SetSerializerOptions(jsonOptions);
+
+            try
+            {
+                using var response = await SendRequest(HttpMethod.Get, url, null, headers, jsonOptions, cancellationToken);
+
+                var result = SetHttpResponse<T>(response);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    result.Data = await JsonSerializer.DeserializeAsync<T>(stream, jsonOptions, cancellationToken: cancellationToken);
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+                return SetHttpExceptionResponse<T>();
+            }
+        }
+
+        /// <summary>
+        /// Sends an HTTP POST request to the specified URL with optional headers, json options and cancellation token."/>.
+        /// </summary>
+        /// <returns>
+        /// A task of type HttpResponse that represents the asynchronous POST operation.  
+        /// </returns>
+        public async Task<HttpResponse<T>> PostAsync<T>(string url, object? body = null, 
+            IDictionary<string, string?>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            CancellationToken cancellationToken = default)
+        {
+            jsonOptions = SetSerializerOptions(jsonOptions);
+
+            try
+            {
+                using var response = await SendRequest(HttpMethod.Post, url, body, headers, jsonOptions, cancellationToken);
+
+                var result = SetHttpResponse<T>(response);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!string.IsNullOrWhiteSpace(jsonString))
+                    {
+                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+                return SetHttpExceptionResponse<T>();
+            }
+        }
+
+        private JsonSerializerOptions SetSerializerOptions(JsonSerializerOptions? jsonOptions)
+        {
             if (jsonOptions is null)
             {
                 jsonOptions = new JsonSerializerOptions
@@ -30,50 +95,60 @@ namespace NetClient.Clients
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
             }
+            return jsonOptions;
+        }
 
-            try
+        public HttpResponse<T> SetHttpResponse<T>(HttpResponseMessage response)
+        {
+            return new HttpResponse<T>
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                StatusCode = (int)response.StatusCode,
+                Result = response.IsSuccessStatusCode,
+                Message = response.ReasonPhrase
+            };
+        }
 
-                if (headers is not null)
+        public HttpResponse<T> SetHttpExceptionResponse<T>()
+        {
+            return new HttpResponse<T>
+            {
+                Result = false,
+                StatusCode = 500,
+                Message = "An unexpected error occurred.",
+                Data = default
+            };
+        }
+
+        private async Task<HttpResponseMessage> SendRequest(HttpMethod method, string? url, 
+            object? body,IDictionary<string, string?>? headers, 
+            JsonSerializerOptions? jsonOptions, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(method, url);
+
+            if (headers is not null)
+            {
+                foreach (var header in headers)
                 {
-                    foreach (var header in headers)
-                    {
-                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                    }
+                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
+            }
 
-                using var response = await _httpClient.SendAsync(request, cancellationToken);
-
-                var result = new HttpResponse<T>
+            if (body is not null)
+            {
+                if (body is IDictionary<string, string> dict)
                 {
-                    StatusCode = (int)response.StatusCode,
-                    Result = response.IsSuccessStatusCode,
-                    Message = response.ReasonPhrase
-                };
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    result.Data = await JsonSerializer.DeserializeAsync<T>(stream, jsonOptions, cancellationToken: cancellationToken);
+                    request.Content = new FormUrlEncodedContent(dict);
                 }
                 else
                 {
-                    result.Data = default;
+                    var json = JsonSerializer.Serialize(body, jsonOptions);
+                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 }
+            }
 
-                return result;
-            }
-            catch (Exception)
-            {
-                return new HttpResponse<T>
-                {
-                    Result = false,
-                    StatusCode = 500,
-                    Message = "An unexpected error occurred.",
-                    Data = default
-                };
-            }
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            return response;
         }
     }
 }
