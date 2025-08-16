@@ -123,6 +123,43 @@ namespace NetClient.Clients
             }
         }
 
+        /// <summary>
+        /// Sends an HTTP PATCH request to the specified URL with optional headers, json options and cancellation token."/>.
+        /// </summary>
+        /// <returns>
+        /// A task of type HttpResponse that represents the asynchronous PATCH operation.  
+        /// </returns>
+        public async Task<HttpResponse<T>> PatchAsync<T>(string url, object? body = null,
+            IDictionary<string, string?>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            CancellationToken cancellationToken = default)
+        {
+            jsonOptions = SetSerializerOptions(jsonOptions);
+
+            try
+            {
+                using var response = await SendRequest(HttpMethod.Patch, url, body, headers, jsonOptions, cancellationToken);
+
+                var result = SetHttpResponse<T>(response);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!string.IsNullOrWhiteSpace(jsonString))
+                    {
+                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+                return SetHttpExceptionResponse<T>();
+            }
+        }
+
         private JsonSerializerOptions SetSerializerOptions(JsonSerializerOptions? jsonOptions)
         {
             if (jsonOptions is null)
