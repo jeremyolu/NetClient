@@ -21,6 +21,6 @@ namespace NetClient.Interfaces
         Task<HttpResponse<T>> PatchAsync<T>(string url, object? body = null,
             IDictionary<string, string?>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default);
     }
 }

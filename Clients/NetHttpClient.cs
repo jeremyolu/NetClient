@@ -62,28 +62,9 @@ namespace NetClient.Clients
         {
             jsonOptions = SetSerializerOptions(jsonOptions);
 
-            try
-            {
-                using var response = await SendRequest(HttpMethod.Post, url, body, headers, jsonOptions, cancellationToken);
+            var response = await SetUpRequest<T>(HttpMethod.Post, url, body, headers, jsonOptions, cancellationToken);
 
-                var result = SetHttpResponse<T>(response);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                    if (!string.IsNullOrWhiteSpace(jsonString))
-                    {
-                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
-                    }
-                }
-
-                return result;
-            }
-            catch (Exception)
-            {
-                return SetHttpExceptionResponse<T>();
-            }
+            return response;
         }
 
         /// <summary>
@@ -99,28 +80,9 @@ namespace NetClient.Clients
         {
             jsonOptions = SetSerializerOptions(jsonOptions);
 
-            try
-            {
-                using var response = await SendRequest(HttpMethod.Put, url, body, headers, jsonOptions, cancellationToken);
+            var response = await SetUpRequest<T>(HttpMethod.Put, url, body, headers, jsonOptions, cancellationToken);
 
-                var result = SetHttpResponse<T>(response);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                    if (!string.IsNullOrWhiteSpace(jsonString))
-                    {
-                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
-                    }
-                }
-
-                return result;
-            }
-            catch (Exception)
-            {
-                return SetHttpExceptionResponse<T>();
-            }
+            return response;
         }
 
         /// <summary>
@@ -136,28 +98,21 @@ namespace NetClient.Clients
         {
             jsonOptions = SetSerializerOptions(jsonOptions);
 
-            try
-            {
-                using var response = await SendRequest(HttpMethod.Patch, url, body, headers, jsonOptions, cancellationToken);
+            var response = await SetUpRequest<T>(HttpMethod.Patch, url, body, headers, jsonOptions, cancellationToken);
 
-                var result = SetHttpResponse<T>(response);
+            return response;
+        }
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+        public async Task<HttpResponse<T>> DeleteAsync<T>(string url, object? body = null,
+            IDictionary<string, string?>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            CancellationToken cancellationToken = default)
+        {
+            jsonOptions = SetSerializerOptions(jsonOptions);
 
-                    if (!string.IsNullOrWhiteSpace(jsonString))
-                    {
-                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
-                    }
-                }
+            var response = await SetUpRequest<T>(HttpMethod.Delete, url, body, headers, jsonOptions, cancellationToken);
 
-                return result;
-            }
-            catch (Exception)
-            {
-                return SetHttpExceptionResponse<T>();
-            }
+            return response;
         }
 
         private JsonSerializerOptions SetSerializerOptions(JsonSerializerOptions? jsonOptions)
@@ -191,6 +146,34 @@ namespace NetClient.Clients
                 Message = "An unexpected error occurred.",
                 Data = default
             };
+        }
+
+        private async Task<HttpResponse<T>> SetUpRequest<T>(HttpMethod method, string? url,
+            object? body, IDictionary<string, string?>? headers,
+            JsonSerializerOptions? jsonOptions, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using var response = await SendRequest(method, url, body, headers, jsonOptions, cancellationToken);
+
+                var result = SetHttpResponse<T>(response);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!string.IsNullOrWhiteSpace(jsonString))
+                    {
+                        result.Data = JsonSerializer.Deserialize<T>(jsonString, jsonOptions);
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+                return SetHttpExceptionResponse<T>();
+            }
         }
 
         private async Task<HttpResponseMessage> SendRequest(HttpMethod method, string? url, 
