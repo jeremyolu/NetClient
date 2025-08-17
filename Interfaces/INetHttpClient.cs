@@ -22,5 +22,10 @@ namespace NetClient.Interfaces
             IDictionary<string, string?>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             CancellationToken cancellationToken = default);
+
+        Task<HttpResponse<T>> DeleteAsync<T>(string url, object? body = null,
+            IDictionary<string, string?>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            CancellationToken cancellationToken = default);
     }
 }

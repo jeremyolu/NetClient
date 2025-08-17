@@ -1,10 +1,7 @@
 ﻿using NetClient.Interfaces;
 using NetClient.Models;
-using System.Reflection.PortableExecutable;
-using System;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 
 namespace NetClient.Clients
 {
@@ -103,6 +100,12 @@ namespace NetClient.Clients
             return response;
         }
 
+        /// <summary>
+        /// Sends an HTTP DELETE request to the specified URL with optional headers, json options and cancellation token."/>.
+        /// </summary>
+        /// <returns>
+        /// A task of type HttpResponse that represents the asynchronous DELET operation.  
+        /// </returns>
         public async Task<HttpResponse<T>> DeleteAsync<T>(string url, object? body = null,
             IDictionary<string, string?>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
